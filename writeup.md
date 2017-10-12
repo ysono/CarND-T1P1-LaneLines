@@ -121,3 +121,18 @@ for challenge, the lower canny threshold had to be lowered to cover the yellow <
 
 curvature => crop
 messy lines at the end where two lines met => crop
+
+
+mask region selection should happen automatically based on hough result.
+
+
+
+
+
+
+i htink my challenge time-avg code would break if the firs tframe didn't have any lines that are ahead, b/c of None, but i'm not gonna test it.
+
+
+
+
+cv2 read and write image is much faster than mpl
