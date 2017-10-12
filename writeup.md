@@ -4,135 +4,93 @@ The goals / steps of this project are the following:
 * Make a pipeline that finds lane lines on the road
 * Reflect on your work in a written report
 
-
-[//]: # (Image References)
-
-[image1]: ./examples/grayscale.jpg "Grayscale"
-
 ---
 
-### Reflection
+## Reflection
 
 ### 1. Describe your pipeline. As part of the description, explain how you modified the draw_lines() function.
 
-My pipeline consisted of 5 steps. First, I converted the images to grayscale, then I .... 
+My initial pipeline is coded in `def process_image` and has these steps:
+- Filter the input image by yellow, b/c we care only about contrast between line colors of {white, yellow} and background colors of {asphalt, concrete}
+- Apply Gaussian blurring
+- Extract points at high gradient using Canny
+- Mask out all but the region of interest
+- Extract line segments using Hough
 
-In order to draw a single line on the left and right lanes, I modified the draw_lines() function by ...
+My improved pipeline extrapolates one line in each of left and right halves of the image.
+It is coded in `def process_image_extrapolated` and has these additional steps:
+- Group Hough line segments by left and right halves of the image
+- Extrapolate one straight line out of all line segments, per half
 
-If you'd like to include images to show how the pipeline works, here is how to include an image: 
+My bonus pipeline adds time-sensitivity to the processing.
+It is coded in `def process_image_time_avged` and has this additional logic:
+- Remember the left and right extrapolated lines one frame ago and two frames ago
+- When processing a new left/right pair of extrapolated lines, average out the left line with those from the most recent 2 frames, and do the same with the right line
 
-![alt text][image1]
+I changed the flow of the notebook a bit. Mine looks like this:
+1. Draw pre-extrapolated Hough line segments on images + videos
+1. Iteratively improve the initial pipeline, and repeat the above
+1. Draw extrapolated lines on images + videos
+1. Iteratively improve the improved pipeline, and repeat the above
+1. Draw time-averaged extrapolated lines on the challenge video
+1. Iteratively improve the bonus pipeline, and repeat the above
+
+I found it necessary to see the line segments on videos in order to:
+- validate that undesired line segments are sufficiently ignored, in anticipation of working on extrapolation
+- find parameters that needed to be customized for specific images, e.g. the mask region for the challenge video
+
+#### Results
+
+For the outputs, please refer too these directories:
+
+```
+./test_images_output_preextrapolated
+./test_videos_output_preextrapolated
+./test_images_output_extrapolated
+./test_videos_output_extrapolated
+```
 
 
 ### 2. Identify potential shortcomings with your current pipeline
 
+The whole processing is very sensitive to parameters, which should therefore be hand-picked.
 
-One potential shortcoming would be what would happen when ... 
+Luckily I was able to reuse the parameters for Gaussian blur, Canny, and Hough from the answers to the previous exercises (see the default argument values to function `process_image`), and I found them to be the best for all images and frames.
 
-Another shortcoming could be ...
+However, they're not perfect, as the yellow line video and the challenge video show. The performance of any one set of parameters is dependent on the ranges of color I encounter. It is hard to distinguish light-brown sand on the shoulder with the yellow line sometimes; and with concrete as the background, the gradient becomes flat and/or noisy.
+
+For the yellow line video, I did try adjusting by
+- increasing canny_threshold_low to 80, to exclude gradients caused by sand on the shoulder
+- reducing hough_min_line_len to 20 and increasing hough_max_line_gap to 100, to better identify the dotted white line on the right
+But after playing with them, I reverted them.
+
+It turned out far more critical to clean up the result of Hough:
+- Reduce the region of interest
+- Eliminate lines that are too orthogonal to the direction of travel
+- Extrapolate, i.e. average line segments by space
+- Average the extrapolated lines by time
+
+For example, as the top edge of the region of interest was lowered and narrowed slightly, many noisy Hough lines at the "end of the road" were eliminated, resulting in much cleaner extrapolated lines. This is ok in practical terms if we're not travelling too fast.
+
+But, had I encountered any sharper turn, any incline, bumps, or wider lanes, or if the camera was not centered or zoomed, I would not have been able to keep using the same region of interest. In fact, case in point, the challenge video shows the bonnet, which I had to crop out.
+
+#### Results
+
+Note, in [this image](test_images_output_preextrapolated/whiteCarLaneSwitch.jpg), I left a little imperfection, but I chose not to optimize for this image, and let space- and time-averaging remove the error instead.
+
+#### Aside
+
+I think my time-averaging code would break if the first frame didn't yield both left and right extrapolated lines. If you test my code with such videos, please crop till the first frame has both.
 
 
 ### 3. Suggest possible improvements to your pipeline
 
-A possible improvement would be to ...
+Parameters could be adjusted dynamically:
 
-Another potential improvement could be to ...
+- If a curve is detected, either reduce the height of the region of interest (i.e. reduce visiblity); or, fit a curve using `np.polyfit(..., deg = 2)` with `deg` of 2 or higher.
+- After the region of interest is selected, detect color distribution, apply a different color filtering to the original image, and re-do whole pipeline in a second pass.
+- When extrapolating left/right curves, retain a history of errors while fitting using `np.polyfit`. If the past few frames have been noisy, 1) increase number of frames to average over, and 2) give less weight to the noisy items.
 
+Also, convolution neural net all the things?
 
-
-
-
-
----
-
-cut top off at 58% b/c in the example it didn't go all the way forward either, and i don't think that far ahead, it's important for sdc decision making.
-
-weakness: have to tune
-- canny for irrelevant gradients like lines that are orthogonal to direction fo travel
-- hough for how the lines are shaped -- length, dotted
-- with HoughLineP, to detect curve, must reduce min line length, which adds error
-- default arguments for the fn are preset for a specific set of image inputs
-
-tuning
-- increase canny high threshold to 200
-- lower the top vertex of the mask triangle to 58%
-- reduce hough min len to 10
-- increase hough max gap to 150
-
-noise => to reduce noise, need time-based analysis s.t. we ignore lines that "pop up and disappear". specifically, we should retain lines that are identical in slope and offset with at least a line in sevveral frames ahead and behind. If we make the window too large, however, real-time ability to look ahead would suffer.
-this would be much more effective than adjusting the canny and hough parameters further, or tailoring mask shape for each image/video.
-
-
-
-todo
-use cv2.inRange for color selection
-
-
-
-for the yellow one ...
-bring down the top edge of the mask
-before 
-increase canny_threshold_low to exclude gradients caused by sand on the shoulder (the yellow color was actually not an issue)
-reduce hough max gap for the right-hand side dotted white line.
-
-
-
-
-the fact that we're extrapolating helps a lot
-that and the lowering of the mask window contributed the greatest. (eg getting rid of lines in the shoulder)
-this is b/c the canny and hough params were already pretty optimal.
-
-
-
-i needed to adjust parameters before extrapolating. case in point the challenge.
-
-
-
-wrote in an obj-oriented way b/c o/w it became impossible to reuse behavior.
-
-
-
-
-
-luckily i had to improve the algo only once, but if i were to experiment in detail, i'd use an objective approach so i can override and reuse pieces easilier.
-but, considering our goal is go come up with as universal a solution as possible, maybe it's good that we're not making it easy to tweak..... meh
-
-
-
-there are imperfections on the static images, but extrapolating mostly solves the issue
-again, time-based averaging is really needed.
-
-
-
-# I initially tuned the thrshold as below, but when I lowered the top edge of the mask, I no longer had to.
-
-# def process_image_yellow(image):
-#     return process_image_impl(
-#         image,
-#         canny_threshold_low = 80,
-#         hough_max_line_gap = 10
-#     )
-
-
-
-for challenge, the lower canny threshold had to be lowered to cover the yellow <-> concrete and white <-> concrete border.
-
-
-
-curvature => crop
-messy lines at the end where two lines met => crop
-
-
-mask region selection should happen automatically based on hough result.
-
-
-
-
-
-
-i htink my challenge time-avg code would break if the firs tframe didn't have any lines that are ahead, b/c of None, but i'm not gonna test it.
-
-
-
-
-cv2 read and write image is much faster than mpl
+Finally, I think an OO style would be easier to read than passing around overriding functions.
