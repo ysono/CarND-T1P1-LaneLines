@@ -11,6 +11,7 @@ The goals / steps of this project are the following:
 ### 1. Describe your pipeline. As part of the description, explain how you modified the draw_lines() function.
 
 My initial pipeline is coded in `def process_image` and has these steps:
+
 - Filter the input image by yellow, b/c we care only about contrast between line colors of {white, yellow} and background colors of {asphalt, concrete}
 - Apply Gaussian blurring
 - Extract points at high gradient using Canny
@@ -19,15 +20,18 @@ My initial pipeline is coded in `def process_image` and has these steps:
 
 My improved pipeline extrapolates one line in each of left and right halves of the image.
 It is coded in `def process_image_extrapolated` and has these additional steps:
+
 - Group Hough line segments by left and right halves of the image
 - Extrapolate one straight line out of all line segments, per half
 
 My bonus pipeline adds time-sensitivity to the processing.
 It is coded in `def process_image_time_avged` and has this additional logic:
+
 - Remember the left and right extrapolated lines one frame ago and two frames ago
 - When processing a new left/right pair of extrapolated lines, average out the left line with those from the most recent 2 frames, and do the same with the right line
 
 I changed the flow of the notebook a bit. Mine looks like this:
+
 1. Draw pre-extrapolated Hough line segments on images + videos
 1. Iteratively improve the initial pipeline, and repeat the above
 1. Draw extrapolated lines on images + videos
@@ -36,6 +40,7 @@ I changed the flow of the notebook a bit. Mine looks like this:
 1. Iteratively improve the bonus pipeline, and repeat the above
 
 I found it necessary to see the line segments on videos in order to:
+
 - validate that undesired line segments are sufficiently ignored, in anticipation of working on extrapolation
 - find parameters that needed to be customized for specific images, e.g. the mask region for the challenge video
 
@@ -60,11 +65,14 @@ Luckily I was able to reuse the parameters for Gaussian blur, Canny, and Hough f
 However, they're not perfect, as the yellow line video and the challenge video show. The performance of any one set of parameters is dependent on the ranges of color I encounter. It is hard to distinguish light-brown sand on the shoulder with the yellow line sometimes; and with concrete as the background, the gradient becomes flat and/or noisy.
 
 For the yellow line video, I did try adjusting by
+
 - increasing canny_threshold_low to 80, to exclude gradients caused by sand on the shoulder
 - reducing hough_min_line_len to 20 and increasing hough_max_line_gap to 100, to better identify the dotted white line on the right
+
 But after playing with them, I reverted them.
 
 It turned out far more critical to clean up the result of Hough:
+
 - Reduce the region of interest
 - Eliminate lines that are too orthogonal to the direction of travel
 - Extrapolate, i.e. average line segments by space
