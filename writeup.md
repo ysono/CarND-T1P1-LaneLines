@@ -6,6 +6,12 @@ The goals / steps of this project are the following:
 
 ---
 
+## Submission
+
+- The [notebook](https://ysono.github.io/CarND-T1P1-LaneLines/P1.html)
+
+---
+
 ## Reflection
 
 ### 1. Describe your pipeline. As part of the description, explain how you modified the draw_lines() function.
